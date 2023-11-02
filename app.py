@@ -1,34 +1,32 @@
-from dataclasses import dataclass, asdict
-
-from flask import Flask, jsonify
+from flask import Flask
 from werkzeug.exceptions import HTTPException
 
+from api.api_user import api_user
+from common.resp import APIResponse
 from configuration import Config, DevelopmentConfig
-
-
-@dataclass
-class APIResponse(object):
-    code: int = 500
-    message: str = "server failed"
-    description: str = ""
-
-    def to_dict(self):
-        return asdict(self)
-
-    def jsonify(self):
-        """return json format to request"""
-        return jsonify(self.to_dict())
+from exceptions.service_exception import ServiceException
 
 
 def handler_error_request(e):
     """handler flask all error"""
     api_response = APIResponse()
-    if isinstance(e, HTTPException):
+
+    if isinstance(e, ServiceException):
+        # service failed
+        api_response.code = e.code
+        api_response.message = str(e)
+        api_response.description = ""
+    elif isinstance(e, HTTPException):
+        # http origin failed
         api_response.code = e.code
         api_response.message = e.name
         api_response.description = e.description
+    else:
+        api_response.code = 500
+        api_response.message = "service exception"
+        api_response.description = ""
 
-    return api_response.jsonify()
+    return api_response.make_failed()
 
 
 def handler_before_request():
@@ -42,6 +40,11 @@ def handler_after_request(resp=None):
     return resp
 
 
+def loading_blueprint_api(current_app: Flask):
+    """loading api routers"""
+    current_app.register_blueprint(api_user, url_prefix="/api/user/")
+
+
 def create_app(config: Config):
     """create application for flask"""
 
@@ -49,11 +52,10 @@ def create_app(config: Config):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config)
 
-    @app.errorhandler(HTTPException)
-    def handler_http_error(e):
-        return handler_error_request(e)
+    # loading blueprint for api
+    loading_blueprint_api(current_app=app)
 
-    @app.errorhandler
+    @app.errorhandler(Exception)
     def handler_error(e):
         return handler_error_request(e)
 
