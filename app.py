@@ -5,6 +5,7 @@ from api.api_user import api_user
 from common.resp import APIResponse
 from configuration import Config, DevelopmentConfig
 from exceptions.service_exception import ServiceException
+from models import db
 
 
 def handler_error_request(e):
@@ -51,6 +52,9 @@ def create_app(config: Config):
     # create flask object and loading config by args config
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config)
+
+    # init app
+    db.init_app(app)
 
     # loading blueprint for api
     loading_blueprint_api(current_app=app)

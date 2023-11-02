@@ -1,6 +1,7 @@
 from flask import Blueprint
 
 from exceptions.service_exception import NotFundResourceException, ParamsException
+from service.user import UserService
 
 api_user = Blueprint("api_user", __name__)
 
@@ -13,7 +14,11 @@ USERS = [
 @api_user.route("/")
 def list_user():
     """list user"""
-    return USERS
+    service = UserService()
+    models = service.list_user()
+    
+    data = [model.to_dict() for model in models]
+    return data
 
 
 @api_user.route('/<int:user_id>/')
